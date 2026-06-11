@@ -5,6 +5,4 @@ import lombok.Data;
 @Data
 public class DeliveryAssignRequest {
     private Long orderId;
-
-    private Long deliveryPartnerId;
 }

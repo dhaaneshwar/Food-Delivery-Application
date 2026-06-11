@@ -24,4 +24,8 @@ public class Order {
     private String status;
 
     private LocalDateTime createdAt;
+
+    private Long itemId;
+
+    private Integer quantity;
 }

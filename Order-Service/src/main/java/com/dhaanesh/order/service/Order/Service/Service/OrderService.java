@@ -1,10 +1,11 @@
 package com.dhaanesh.order.service.Order.Service.Service;
 
-import com.dhaanesh.order.service.Order.Service.Entity.Order;
-import com.dhaanesh.order.service.Order.Service.Entity.OrderTimeline;
+import com.dhaanesh.order.service.Order.Service.Entity.*;
 import com.dhaanesh.order.service.Order.Service.Repository.OrderRepository;
 import com.dhaanesh.order.service.Order.Service.Repository.OrderTimelineRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,17 +17,36 @@ public class OrderService {
 
     private final OrderTimelineRepository orderTimelineRepository;
 
-    public OrderService(OrderRepository orderRepository, OrderTimelineRepository orderTimelineRepository) {
+    private final RestTemplate restTemplate;
+
+    public OrderService(OrderRepository orderRepository, OrderTimelineRepository orderTimelineRepository,RestTemplate restTemplate) {
         this.orderRepository = orderRepository;
         this.orderTimelineRepository = orderTimelineRepository;
+        this.restTemplate = restTemplate;
     }
 
+    @Transactional
     public Order createOrder(Order order) {
+        UserResponse user = getUser(order.getUserId());
+        if (user == null) {
+            throw new RuntimeException("User Not Found");
+        }
 
+        RestaurantResponse restaurant = getRestaurant(order.getRestaurantId());
+        if (!restaurant.isOpen()) {
+            throw new RuntimeException("Restaurant Closed");
+        }
+
+        Boolean available = checkAvailability(order.getItemId());
+        if (!available) {
+            throw new RuntimeException("Item Out Of Stock");
+        }
+
+        decreaseStock(order.getItemId(), order.getQuantity());
         order.setStatus("PLACED");
         order.setCreatedAt(LocalDateTime.now());
         Order savedOrder = orderRepository.save(order);
-        addTimeline(savedOrder.getId(), "PLACED");
+        assignDelivery(savedOrder.getId());
         return savedOrder;
     }
 
@@ -74,5 +94,30 @@ public class OrderService {
         timeline.setStatus(status);
         timeline.setUpdatedAt(LocalDateTime.now());
         orderTimelineRepository.save(timeline);
+    }
+
+    public UserResponse getUser(Long userId) {
+        return restTemplate.getForObject("http://USER-SERVICE/users/" + userId, UserResponse.class);
+    }
+
+    public RestaurantResponse getRestaurant(Long restaurantId) {
+        return restTemplate.getForObject("http://RESTAURANT-SERVICE/restaurants/" + restaurantId, RestaurantResponse.class);
+    }
+
+    public Boolean checkAvailability(Long itemId) {
+        return restTemplate.getForObject("http://INVENTORY-SERVICE/inventory/check/"
+                        + itemId, Boolean.class);
+    }
+
+    public void decreaseStock(Long itemId, Integer quantity) {
+        StockRequest request = new StockRequest();
+        request.setQuantity(quantity);
+        restTemplate.put("http://INVENTORY-SERVICE/inventory/" + itemId + "/decrease", request);
+    }
+
+    public void assignDelivery(Long orderId) {
+        DeliveryAssignRequest request = new DeliveryAssignRequest();
+        request.setOrderId(orderId);
+        restTemplate.postForObject("http://DELIVERY-PARTNER-SERVICE/deliveries/assign", request, Object.class);
     }
 }

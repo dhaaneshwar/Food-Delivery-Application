@@ -9,6 +9,7 @@ import com.dhaanesh.delivery.service.Delivery.Partner.Service.Repository.Deliver
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class DeliveryPartnerService {
@@ -39,18 +40,8 @@ public class DeliveryPartnerService {
         return deliveryPartnerRepository.save(partner);
     }
 
-    public Delivery assignDelivery(DeliveryAssignRequest request) {
-
-        DeliveryPartner partner = getPartner(request.getDeliveryPartnerId());
-        partner.setAvailable(false);
-        deliveryPartnerRepository.save(partner);
-        Delivery delivery = new Delivery();
-        delivery.setOrderId(request.getOrderId());
-        delivery.setDeliveryPartnerId(request.getDeliveryPartnerId());
-        delivery.setStatus("ASSIGNED");
-        delivery.setAssignedAt(LocalDateTime.now());
-
-        return deliveryRepository.save(delivery);
+    public Optional<DeliveryPartner> assignDelivery(DeliveryAssignRequest request) {
+        Optional<DeliveryPartner> partner = deliveryPartnerRepository.findFirstByAvailableTrue();
     }
 
     public Delivery pickupOrder(Long deliveryId) {

@@ -34,11 +34,11 @@ public class DeliveryPartnerController {
         return deliveryPartnerService.updatePartner(id, partner);
     }
 
-    @PostMapping("/deliveries/assign")
-    public Delivery assignDelivery(@RequestBody DeliveryAssignRequest request) {
-
-        return deliveryPartnerService.assignDelivery(request);
-    }
+//    @PostMapping("/deliveries/assign")
+//    public Delivery assignDelivery(@RequestBody DeliveryAssignRequest request) {
+//
+//        return deliveryPartnerService.assignDelivery(request);
+//    }
 
     @PutMapping("/deliveries/{id}/pickup")
     public Delivery pickupOrder(@PathVariable Long id) {

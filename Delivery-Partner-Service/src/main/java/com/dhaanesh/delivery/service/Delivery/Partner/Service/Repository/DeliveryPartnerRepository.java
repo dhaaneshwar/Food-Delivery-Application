@@ -4,6 +4,9 @@ import com.dhaanesh.delivery.service.Delivery.Partner.Service.Entity.DeliveryPar
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface DeliveryPartnerRepository extends JpaRepository<DeliveryPartner,Long> {
+    Optional<DeliveryPartner> findFirstByAvailableTrue();
 }
