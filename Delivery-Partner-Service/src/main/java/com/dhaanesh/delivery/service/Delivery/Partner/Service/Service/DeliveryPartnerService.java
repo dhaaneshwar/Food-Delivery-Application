@@ -7,6 +7,7 @@ import com.dhaanesh.delivery.service.Delivery.Partner.Service.Entity.LocationReq
 import com.dhaanesh.delivery.service.Delivery.Partner.Service.Repository.DeliveryPartnerRepository;
 import com.dhaanesh.delivery.service.Delivery.Partner.Service.Repository.DeliveryRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -40,10 +41,6 @@ public class DeliveryPartnerService {
         return deliveryPartnerRepository.save(partner);
     }
 
-    public Optional<DeliveryPartner> assignDelivery(DeliveryAssignRequest request) {
-        Optional<DeliveryPartner> partner = deliveryPartnerRepository.findFirstByAvailableTrue();
-    }
-
     public Delivery pickupOrder(Long deliveryId) {
 
         Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow(() -> new RuntimeException("Delivery Not Found"));
@@ -72,5 +69,38 @@ public class DeliveryPartnerService {
 
     public Delivery trackDelivery(Long deliveryId) {
         return deliveryRepository.findById(deliveryId).orElseThrow(() -> new RuntimeException("Delivery Not Found"));
+    }
+
+    @Transactional
+    public Delivery assignDelivery(DeliveryAssignRequest request) {
+        DeliveryPartner partner = deliveryPartnerRepository
+                        .findFirstByAvailableTrue()
+                        .orElseThrow(() -> new RuntimeException("No Delivery Partner Available"));
+        partner.setAvailable(false);
+        deliveryPartnerRepository.save(partner);
+        Delivery delivery = new Delivery();
+        delivery.setOrderId(request.getOrderId());
+        delivery.setDeliveryPartnerId(partner.getId());
+        delivery.setStatus("ASSIGNED");
+        delivery.setAssignedAt(LocalDateTime.now());
+        return deliveryRepository.save(delivery);
+    }
+
+    public Delivery pickup(Long deliveryId) {
+        Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow();
+        delivery.setStatus("PICKED_UP");
+        delivery.setPickedUpAt(LocalDateTime.now());
+        return deliveryRepository.save(delivery);
+    }
+
+    public Delivery delivered(Long deliveryId) {
+
+        Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow();
+        delivery.setStatus("DELIVERED");
+        delivery.setDeliveredAt(LocalDateTime.now());
+        DeliveryPartner partner = deliveryPartnerRepository.findById(delivery.getDeliveryPartnerId()).orElseThrow();
+        partner.setAvailable(true);
+        deliveryPartnerRepository.save(partner);
+        return deliveryRepository.save(delivery);
     }
 }

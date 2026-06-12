@@ -21,6 +21,6 @@ public class Delivery {
     private String status;
 
     private LocalDateTime assignedAt;
-
+    private LocalDateTime pickedUpAt;
     private LocalDateTime deliveredAt;
 }
