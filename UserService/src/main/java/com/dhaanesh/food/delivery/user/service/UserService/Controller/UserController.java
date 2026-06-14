@@ -19,7 +19,7 @@ public class UserController {
         return userService.register(user);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/findById/{id}")
     public User getUser(@PathVariable Long id) {
         return userService.getUser(id);
     }

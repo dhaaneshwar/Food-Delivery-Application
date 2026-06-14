@@ -36,7 +36,7 @@ public class DeliveryPartnerService {
     public DeliveryPartner updatePartner(Long id, DeliveryPartner updatedPartner) {
         DeliveryPartner partner = getPartner(id);
         partner.setName(updatedPartner.getName());
-        partner.setPhone(updatedPartner.getPhone());
+        partner.setPhoneNumber(updatedPartner.getPhoneNumber());
         partner.setVehicleNumber(updatedPartner.getVehicleNumber());
         return deliveryPartnerRepository.save(partner);
     }
@@ -45,6 +45,7 @@ public class DeliveryPartnerService {
 
         Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow(() -> new RuntimeException("Delivery Not Found"));
         delivery.setStatus("PICKED_UP");
+        delivery.setPickedUpAt(LocalDateTime.now().plusMinutes(30));
         return deliveryRepository.save(delivery);
     }
 
@@ -56,6 +57,7 @@ public class DeliveryPartnerService {
         Delivery savedDelivery = deliveryRepository.save(delivery);
         DeliveryPartner partner = getPartner(delivery.getDeliveryPartnerId());
         partner.setAvailable(true);
+        delivery.setDeliveredAt(LocalDateTime.now().plusHours(1));
         deliveryPartnerRepository.save(partner);
         return savedDelivery;
     }
@@ -86,21 +88,4 @@ public class DeliveryPartnerService {
         return deliveryRepository.save(delivery);
     }
 
-    public Delivery pickup(Long deliveryId) {
-        Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow();
-        delivery.setStatus("PICKED_UP");
-        delivery.setPickedUpAt(LocalDateTime.now());
-        return deliveryRepository.save(delivery);
-    }
-
-    public Delivery delivered(Long deliveryId) {
-
-        Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow();
-        delivery.setStatus("DELIVERED");
-        delivery.setDeliveredAt(LocalDateTime.now());
-        DeliveryPartner partner = deliveryPartnerRepository.findById(delivery.getDeliveryPartnerId()).orElseThrow();
-        partner.setAvailable(true);
-        deliveryPartnerRepository.save(partner);
-        return deliveryRepository.save(delivery);
-    }
 }

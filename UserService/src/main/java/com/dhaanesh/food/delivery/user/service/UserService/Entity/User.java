@@ -1,13 +1,15 @@
 package com.dhaanesh.food.delivery.user.service.UserService.Entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "users")
 @Data
-@Builder
 public class User {
 
     @Id
@@ -22,4 +24,6 @@ public class User {
     private String password;
 
     private String phone;
+
+    public User() {}
 }

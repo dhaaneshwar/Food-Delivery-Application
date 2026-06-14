@@ -8,6 +8,7 @@ import com.dhaanesh.delivery.service.Delivery.Partner.Service.Service.DeliveryPa
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("")
 public class DeliveryPartnerController {
 
     private final DeliveryPartnerService deliveryPartnerService;
@@ -56,5 +57,10 @@ public class DeliveryPartnerController {
     public Delivery trackDelivery(@PathVariable Long id) {
 
         return deliveryPartnerService.trackDelivery(id);
+    }
+
+    @PostMapping("/deliveries/assign")
+    public Delivery assignDelivery(@RequestBody DeliveryAssignRequest deliveryAssignRequest){
+        return deliveryPartnerService.assignDelivery(deliveryAssignRequest);
     }
 }

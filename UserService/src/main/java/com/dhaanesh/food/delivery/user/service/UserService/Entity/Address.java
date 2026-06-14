@@ -7,7 +7,6 @@ import lombok.Data;
 @Entity
 @Table(name = "addresses")
 @Data
-@Builder
 public class Address {
 
     @Id

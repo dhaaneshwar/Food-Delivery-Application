@@ -94,30 +94,31 @@ public class OrderService {
         timeline.setStatus(status);
         timeline.setUpdatedAt(LocalDateTime.now());
         orderTimelineRepository.save(timeline);
+        restTemplate.put("http://delivery-partner-service/deliveries/"+orderId+"/delivered",null);
     }
 
     public UserResponse getUser(Long userId) {
-        return restTemplate.getForObject("http://USER-SERVICE/users/" + userId, UserResponse.class);
+        return restTemplate.getForObject("http://user-service/users/findById/" + userId, UserResponse.class);
     }
 
     public RestaurantResponse getRestaurant(Long restaurantId) {
-        return restTemplate.getForObject("http://RESTAURANT-SERVICE/restaurants/" + restaurantId, RestaurantResponse.class);
+        return restTemplate.getForObject("http://restaurant-service/restaurants/" + restaurantId, RestaurantResponse.class);
     }
 
     public Boolean checkAvailability(Long itemId) {
-        return restTemplate.getForObject("http://INVENTORY-SERVICE/inventory/check/"
+        return restTemplate.getForObject("http://inventory-service/inventory/check/"
                         + itemId, Boolean.class);
     }
 
     public void decreaseStock(Long itemId, Integer quantity) {
         StockRequest request = new StockRequest();
         request.setQuantity(quantity);
-        restTemplate.put("http://INVENTORY-SERVICE/inventory/" + itemId + "/decrease", request);
+        restTemplate.put("http://inventory-service/inventory/" + itemId + "/decrease", request);
     }
 
     public void assignDelivery(Long orderId) {
         DeliveryAssignRequest request = new DeliveryAssignRequest();
         request.setOrderId(orderId);
-        restTemplate.postForObject("http://DELIVERY-PARTNER-SERVICE/deliveries/assign", request, Object.class);
+        restTemplate.postForObject("http://delivery-partner-service/deliveries/assign", request, Object.class);
     }
 }

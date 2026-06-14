@@ -6,7 +6,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
+@RestController
+@RequestMapping("restaurants")
 public class RestaurantController {
 
     private final RestaurantService restaurantService;

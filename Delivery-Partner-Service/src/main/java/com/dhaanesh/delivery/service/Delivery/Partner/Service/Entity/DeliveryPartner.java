@@ -14,7 +14,7 @@ public class DeliveryPartner {
 
     private String name;
 
-    private String phone;
+    private String phoneNumber;
 
     private String vehicleNumber;
 

@@ -10,5 +10,5 @@ import java.util.Optional;
 @Repository
 public interface DeliveryPartnerRepository extends JpaRepository<DeliveryPartner,Long> {
     Optional<DeliveryPartner> findFirstByAvailableTrue();
-    Optional<Delivery> findByOrderId(Long orderId);
+//    Optional<Delivery> findByOrderId(Long orderId);
 }

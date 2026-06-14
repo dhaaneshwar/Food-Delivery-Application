@@ -3,6 +3,8 @@ package com.dhaanesh.food.delivery.user.service.UserService.Service;
 import com.dhaanesh.food.delivery.user.service.UserService.Entity.User;
 import com.dhaanesh.food.delivery.user.service.UserService.Repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -32,12 +34,17 @@ public class UserService {
     }
 
     public User getUser(Long id) {
-        return userRepository.findById(id).orElseThrow();
+        // throw a ResponseStatusException so controllers return 404 instead of 500 when user is missing
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return user;
     }
 
     public User updateUser(Long id, User updatedUser) {
 
-        User user = userRepository.findById(id).orElseThrow();
+        // throw a ResponseStatusException so controllers return 404 instead of 500 when user is missing
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         user.setName(updatedUser.getName());
         user.setEmail(updatedUser.getEmail());
