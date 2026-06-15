@@ -17,6 +17,7 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    // Delivery partner should be free to create a order
     @PostMapping
     public Order createOrder(@RequestBody Order order) {
         return orderService.createOrder(order);

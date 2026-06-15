@@ -6,6 +6,7 @@ import com.dhaanesh.order.service.Order.Service.Repository.OrderTimelineReposito
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,11 +19,13 @@ public class OrderService {
     private final OrderTimelineRepository orderTimelineRepository;
 
     private final RestTemplate restTemplate;
+    private final WebClient webClient;
 
-    public OrderService(OrderRepository orderRepository, OrderTimelineRepository orderTimelineRepository,RestTemplate restTemplate) {
+    public OrderService(OrderRepository orderRepository, OrderTimelineRepository orderTimelineRepository, RestTemplate restTemplate, WebClient.Builder webClientBuilder) {
         this.orderRepository = orderRepository;
         this.orderTimelineRepository = orderTimelineRepository;
         this.restTemplate = restTemplate;
+        this.webClient = webClientBuilder.build();
     }
 
     @Transactional
@@ -94,7 +97,17 @@ public class OrderService {
         timeline.setStatus(status);
         timeline.setUpdatedAt(LocalDateTime.now());
         orderTimelineRepository.save(timeline);
-        restTemplate.put("http://delivery-partner-service/deliveries/"+orderId+"/delivered",null);
+        // notify delivery partner service that order was delivered using WebClient (synchronous)
+        try {
+            webClient.put()
+                    .uri("http://delivery-partner-service/deliveries/{orderId}/delivered", orderId)
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .block();
+        } catch (Exception ex) {
+            // log and continue; timeline already saved
+            System.err.println("Failed to notify delivery partner about delivered order " + orderId + ": " + ex.getMessage());
+        }
     }
 
     public UserResponse getUser(Long userId) {
@@ -119,6 +132,12 @@ public class OrderService {
     public void assignDelivery(Long orderId) {
         DeliveryAssignRequest request = new DeliveryAssignRequest();
         request.setOrderId(orderId);
-        restTemplate.postForObject("http://delivery-partner-service/deliveries/assign", request, Object.class);
+//        restTemplate.postForObject("http://delivery-partner-service/deliveries/assign", request, Object.class);
+        webClient.post()
+                .uri("http://delivery-partner-service/deliveries/assign")
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
     }
 }
