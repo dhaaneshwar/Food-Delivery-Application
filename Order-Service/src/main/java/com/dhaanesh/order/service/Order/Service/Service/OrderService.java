@@ -10,6 +10,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class OrderService {
@@ -20,6 +22,7 @@ public class OrderService {
 
     private final RestTemplate restTemplate;
     private final WebClient webClient;
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     public OrderService(OrderRepository orderRepository, OrderTimelineRepository orderTimelineRepository, RestTemplate restTemplate, WebClient.Builder webClientBuilder) {
         this.orderRepository = orderRepository;
@@ -30,8 +33,10 @@ public class OrderService {
 
     @Transactional
     public Order createOrder(Order order) {
+        log.info("Creating order: userId={}, restaurantId={}, itemId={}, quantity={}", order.getUserId(), order.getRestaurantId(), order.getItemId(), order.getQuantity());
         UserResponse user = getUser(order.getUserId());
         if (user == null) {
+            log.warn("User not found: userId={}", order.getUserId());
             throw new RuntimeException("User Not Found");
         }
 
@@ -49,6 +54,7 @@ public class OrderService {
         order.setStatus("PLACED");
         order.setCreatedAt(LocalDateTime.now());
         Order savedOrder = orderRepository.save(order);
+        log.info("Order created: id={}, status={}", savedOrder.getId(), savedOrder.getStatus());
         assignDelivery(savedOrder.getId());
         return savedOrder;
     }
@@ -92,22 +98,20 @@ public class OrderService {
     }
 
     private void addTimeline(Long orderId, String status) {
+        log.debug("Adding timeline entry for order {}", orderId);
         OrderTimeline timeline = new OrderTimeline();
         timeline.setOrderId(orderId);
         timeline.setStatus(status);
         timeline.setUpdatedAt(LocalDateTime.now());
         orderTimelineRepository.save(timeline);
         // notify delivery partner service that order was delivered using WebClient (synchronous)
-        try {
+
             webClient.put()
                     .uri("http://delivery-partner-service/deliveries/{orderId}/delivered", orderId)
                     .retrieve()
                     .bodyToMono(Void.class)
-                    .block();
-        } catch (Exception ex) {
-            // log and continue; timeline already saved
-            System.err.println("Failed to notify delivery partner about delivered order " + orderId + ": " + ex.getMessage());
-        }
+                    .block();  // remove block for synchronous communication
+
     }
 
     public UserResponse getUser(Long userId) {
@@ -119,17 +123,32 @@ public class OrderService {
     }
 
     public Boolean checkAvailability(Long itemId) {
-        return restTemplate.getForObject("http://inventory-service/inventory/check/"
-                        + itemId, Boolean.class);
+//        restTemplate.getForObject("http://inventory-service/inventory/check/"
+//                + itemId, Boolean.class);
+            return webClient.get()
+                    .uri("http://inventory-service/inventory/check/{itemId}", itemId)
+                    .retrieve()
+                    .bodyToMono(Boolean.class)
+                    .block();
+
     }
 
     public void decreaseStock(Long itemId, Integer quantity) {
+        log.debug("Decreasing stock for item {} by {}", itemId, quantity);
         StockRequest request = new StockRequest();
         request.setQuantity(quantity);
-        restTemplate.put("http://inventory-service/inventory/" + itemId + "/decrease", request);
+//        restTemplate.put("http://inventory-service/inventory/" + itemId + "/decrease", request);
+            webClient.put()
+                    .uri("http://inventory-service/inventory/{itemId}/decrease", itemId)
+                    .bodyValue(request)
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block();
+
     }
 
     public void assignDelivery(Long orderId) {
+        log.debug("Assigning delivery for order {}", orderId);
         DeliveryAssignRequest request = new DeliveryAssignRequest();
         request.setOrderId(orderId);
 //        restTemplate.postForObject("http://delivery-partner-service/deliveries/assign", request, Object.class);
