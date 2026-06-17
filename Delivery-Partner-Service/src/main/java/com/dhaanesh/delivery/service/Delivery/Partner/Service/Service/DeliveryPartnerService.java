@@ -8,9 +8,10 @@ import com.dhaanesh.delivery.service.Delivery.Partner.Service.Repository.Deliver
 import com.dhaanesh.delivery.service.Delivery.Partner.Service.Repository.DeliveryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Service
 public class DeliveryPartnerService {
@@ -18,6 +19,7 @@ public class DeliveryPartnerService {
     private final DeliveryPartnerRepository deliveryPartnerRepository;
 
     private final DeliveryRepository deliveryRepository;
+    private static final Logger log = LoggerFactory.getLogger(DeliveryPartnerService.class);
 
     public DeliveryPartnerService(DeliveryPartnerRepository deliveryPartnerRepository, DeliveryRepository deliveryRepository) {
         this.deliveryPartnerRepository = deliveryPartnerRepository;
@@ -25,33 +27,51 @@ public class DeliveryPartnerService {
     }
 
     public DeliveryPartner createPartner(DeliveryPartner partner) {
+        log.info("Creating delivery partner: {}", partner);
         partner.setAvailable(true);
-        return deliveryPartnerRepository.save(partner);
+        DeliveryPartner saved = deliveryPartnerRepository.save(partner);
+        log.debug("Created delivery partner with id={}", saved.getId());
+        return saved;
     }
 
     public DeliveryPartner getPartner(Long id) {
-        return deliveryPartnerRepository.findById(id).orElseThrow(() -> new RuntimeException("Partner Not Found"));
+        log.debug("Fetching delivery partner with id={}", id);
+        return deliveryPartnerRepository.findById(id).orElseThrow(() -> {
+            log.warn("Delivery partner not found id={}", id);
+            return new RuntimeException("Partner Not Found");
+        });
     }
 
     public DeliveryPartner updatePartner(Long id, DeliveryPartner updatedPartner) {
+        log.info("Updating delivery partner id={}", id);
         DeliveryPartner partner = getPartner(id);
         partner.setName(updatedPartner.getName());
         partner.setPhoneNumber(updatedPartner.getPhoneNumber());
         partner.setVehicleNumber(updatedPartner.getVehicleNumber());
-        return deliveryPartnerRepository.save(partner);
+        DeliveryPartner saved = deliveryPartnerRepository.save(partner);
+        log.debug("Updated delivery partner id={}", saved.getId());
+        return saved;
     }
 
     public Delivery pickupOrder(Long deliveryId) {
-
-        Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow(() -> new RuntimeException("Delivery Not Found"));
+        log.info("Picking up delivery id={}", deliveryId);
+        Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow(() -> {
+            log.warn("Delivery not found for pickup id={}", deliveryId);
+            return new RuntimeException("Delivery Not Found");
+        });
         delivery.setStatus("PICKED_UP");
         delivery.setPickedUpAt(LocalDateTime.now().plusMinutes(30));
-        return deliveryRepository.save(delivery);
+        Delivery saved = deliveryRepository.save(delivery);
+        log.debug("Delivery id={} marked PICKED_UP", saved.getId());
+        return saved;
     }
 
     public Delivery deliveredOrder(Long deliveryId) {
-
-        Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow(() -> new RuntimeException("Delivery Not Found"));
+        log.info("Marking delivery id={} as DELIVERED", deliveryId);
+        Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow(() -> {
+            log.warn("Delivery not found for delivered operation id={}", deliveryId);
+            return new RuntimeException("Delivery Not Found");
+        });
         delivery.setStatus("DELIVERED");
         delivery.setDeliveredAt(LocalDateTime.now());
         Delivery savedDelivery = deliveryRepository.save(delivery);
@@ -59,33 +79,48 @@ public class DeliveryPartnerService {
         partner.setAvailable(true);
         delivery.setDeliveredAt(LocalDateTime.now().plusHours(1));
         deliveryPartnerRepository.save(partner);
+        log.debug("Delivery id={} delivered and partner id={} set available", deliveryId, partner.getId());
         return savedDelivery;
     }
 
     public DeliveryPartner updateLocation(Long partnerId, LocationRequest request) {
+        log.debug("Updating location for partner id={} lat={} lon={}", partnerId, request.getLatitude(), request.getLongitude());
         DeliveryPartner partner = getPartner(partnerId);
         partner.setLatitude(request.getLatitude());
         partner.setLongitude(request.getLongitude());
-        return deliveryPartnerRepository.save(partner);
+        DeliveryPartner saved = deliveryPartnerRepository.save(partner);
+        log.trace("Updated location saved for partner id={}", saved.getId());
+        return saved;
     }
 
     public Delivery trackDelivery(Long deliveryId) {
-        return deliveryRepository.findById(deliveryId).orElseThrow(() -> new RuntimeException("Delivery Not Found"));
+        log.debug("Tracking delivery id={}", deliveryId);
+        return deliveryRepository.findById(deliveryId).orElseThrow(() -> {
+            log.warn("Delivery not found for track id={}", deliveryId);
+            return new RuntimeException("Delivery Not Found");
+        });
     }
 
     @Transactional
     public Delivery assignDelivery(DeliveryAssignRequest request) {
+        log.info("Assigning delivery for orderId={}", request.getOrderId());
         DeliveryPartner partner = deliveryPartnerRepository
                         .findFirstByAvailableTrue()
-                        .orElseThrow(() -> new RuntimeException("No Delivery Partner Available"));
+                        .orElseThrow(() -> {
+                            log.warn("No available delivery partner for orderId={}", request.getOrderId());
+                            return new RuntimeException("No Delivery Partner Available");
+                        });
         partner.setAvailable(false);
         deliveryPartnerRepository.save(partner);
+        log.debug("Assigned partner id={} to orderId={}", partner.getId(), request.getOrderId());
         Delivery delivery = new Delivery();
         delivery.setOrderId(request.getOrderId());
         delivery.setDeliveryPartnerId(partner.getId());
         delivery.setStatus("ASSIGNED");
         delivery.setAssignedAt(LocalDateTime.now());
-        return deliveryRepository.save(delivery);
+        Delivery saved = deliveryRepository.save(delivery);
+        log.debug("Created delivery id={} for orderId={} with partnerId={}", saved.getId(), request.getOrderId(), partner.getId());
+        return saved;
     }
 
 }
