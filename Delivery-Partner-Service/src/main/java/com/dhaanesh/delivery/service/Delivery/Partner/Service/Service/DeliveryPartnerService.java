@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.dhaanesh.delivery.service.Delivery.Partner.Service.Exception.DeliveryNotFoundException;
+import com.dhaanesh.delivery.service.Delivery.Partner.Service.Exception.DeliveryPartnerNotFoundException;
 
 import java.time.LocalDateTime;
 
@@ -38,7 +40,7 @@ public class DeliveryPartnerService {
         log.debug("Fetching delivery partner with id={}", id);
         return deliveryPartnerRepository.findById(id).orElseThrow(() -> {
             log.warn("Delivery partner not found id={}", id);
-            return new RuntimeException("Partner Not Found");
+            return new DeliveryPartnerNotFoundException("Partner Not Found with id=" + id);
         });
     }
 
@@ -57,7 +59,7 @@ public class DeliveryPartnerService {
         log.info("Picking up delivery id={}", deliveryId);
         Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow(() -> {
             log.warn("Delivery not found for pickup id={}", deliveryId);
-            return new RuntimeException("Delivery Not Found");
+            return new DeliveryNotFoundException("Delivery Not Found with id=" + deliveryId);
         });
         delivery.setStatus("PICKED_UP");
         delivery.setPickedUpAt(LocalDateTime.now().plusMinutes(30));
@@ -70,7 +72,7 @@ public class DeliveryPartnerService {
         log.info("Marking delivery id={} as DELIVERED", deliveryId);
         Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow(() -> {
             log.warn("Delivery not found for delivered operation id={}", deliveryId);
-            return new RuntimeException("Delivery Not Found");
+            return new DeliveryNotFoundException("Delivery Not Found with id=" + deliveryId);
         });
         delivery.setStatus("DELIVERED");
         delivery.setDeliveredAt(LocalDateTime.now());
@@ -97,7 +99,7 @@ public class DeliveryPartnerService {
         log.debug("Tracking delivery id={}", deliveryId);
         return deliveryRepository.findById(deliveryId).orElseThrow(() -> {
             log.warn("Delivery not found for track id={}", deliveryId);
-            return new RuntimeException("Delivery Not Found");
+            return new DeliveryNotFoundException("Delivery Not Found with id=" + deliveryId);
         });
     }
 
@@ -108,7 +110,7 @@ public class DeliveryPartnerService {
                         .findFirstByAvailableTrue()
                         .orElseThrow(() -> {
                             log.warn("No available delivery partner for orderId={}", request.getOrderId());
-                            return new RuntimeException("No Delivery Partner Available");
+                            return new DeliveryPartnerNotFoundException("No Delivery Partner Available for orderId=" + request.getOrderId());
                         });
         partner.setAvailable(false);
         deliveryPartnerRepository.save(partner);

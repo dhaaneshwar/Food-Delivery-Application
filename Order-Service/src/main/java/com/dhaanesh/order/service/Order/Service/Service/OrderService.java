@@ -1,6 +1,10 @@
 package com.dhaanesh.order.service.Order.Service.Service;
 
 import com.dhaanesh.order.service.Order.Service.Entity.*;
+import com.dhaanesh.order.service.Order.Service.Exception.UserNotFoundException;
+import com.dhaanesh.order.service.Order.Service.Exception.RestaurantClosedException;
+import com.dhaanesh.order.service.Order.Service.Exception.ItemOutOfStockException;
+import com.dhaanesh.order.service.Order.Service.Exception.OrderNotFoundException;
 import com.dhaanesh.order.service.Order.Service.Repository.OrderRepository;
 import com.dhaanesh.order.service.Order.Service.Repository.OrderTimelineRepository;
 import jakarta.transaction.Transactional;
@@ -37,17 +41,17 @@ public class OrderService {
         UserResponse user = getUser(order.getUserId());
         if (user == null) {
             log.warn("User not found: userId={}", order.getUserId());
-            throw new RuntimeException("User Not Found");
+            throw new UserNotFoundException();
         }
 
         RestaurantResponse restaurant = getRestaurant(order.getRestaurantId());
         if (!restaurant.isOpen()) {
-            throw new RuntimeException("Restaurant Closed");
+            throw new RestaurantClosedException();
         }
 
         Boolean available = checkAvailability(order.getItemId());
         if (!available) {
-            throw new RuntimeException("Item Out Of Stock");
+            throw new ItemOutOfStockException();
         }
 
         decreaseStock(order.getItemId(), order.getQuantity());
@@ -60,7 +64,7 @@ public class OrderService {
     }
 
     public Order getOrder(Long id) {
-        return orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order Not Found"));
+        return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException());
     }
 
     public List<Order> getOrdersByUser(Long userId) {
