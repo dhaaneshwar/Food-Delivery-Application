@@ -28,5 +28,11 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(apiError, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ExceptionHandler(OrderPickUpException.class)
+    public ResponseEntity<ApiError> handleOrderPickUp(OrderPickUpException ex, HttpServletRequest request) {
+        ApiError apiError = new ApiError(HttpStatus.CONFLICT.value(), HttpStatus.CONFLICT.getReasonPhrase(), ex.getMessage(), request.getRequestURI());
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
 }
 

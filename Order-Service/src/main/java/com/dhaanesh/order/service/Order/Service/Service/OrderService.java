@@ -8,6 +8,7 @@ import com.dhaanesh.order.service.Order.Service.Exception.OrderNotFoundException
 import com.dhaanesh.order.service.Order.Service.Repository.OrderRepository;
 import com.dhaanesh.order.service.Order.Service.Repository.OrderTimelineRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -25,14 +26,19 @@ public class OrderService {
     private final OrderTimelineRepository orderTimelineRepository;
 
     private final RestTemplate restTemplate;
+
     private final WebClient webClient;
+
+    private KafkaTemplate<String, DeliveryAssignRequest> kafkaTemplate;
+
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
-    public OrderService(OrderRepository orderRepository, OrderTimelineRepository orderTimelineRepository, RestTemplate restTemplate, WebClient.Builder webClientBuilder) {
+    public OrderService(OrderRepository orderRepository, OrderTimelineRepository orderTimelineRepository, RestTemplate restTemplate, WebClient.Builder webClientBuilder, KafkaTemplate<String, DeliveryAssignRequest> kafkaTemplate) {
         this.orderRepository = orderRepository;
         this.orderTimelineRepository = orderTimelineRepository;
         this.restTemplate = restTemplate;
         this.webClient = webClientBuilder.build();
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @Transactional
@@ -58,13 +64,13 @@ public class OrderService {
         order.setStatus("PLACED");
         order.setCreatedAt(LocalDateTime.now());
         Order savedOrder = orderRepository.save(order);
-        log.info("Order created: id={}, status={}", savedOrder.getId(), savedOrder.getStatus());
-        assignDelivery(savedOrder.getId());
+        log.info("Order created: id={}, status={}", savedOrder.getOrderId(), savedOrder.getStatus());
+        assignDelivery(savedOrder.getOrderId());
         return savedOrder;
     }
 
     public Order getOrder(Long id) {
-        return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException());
+        return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException("No order found for the id {} " + id));
     }
 
     public List<Order> getOrdersByUser(Long userId) {
@@ -155,12 +161,17 @@ public class OrderService {
         log.debug("Assigning delivery for order {}", orderId);
         DeliveryAssignRequest request = new DeliveryAssignRequest();
         request.setOrderId(orderId);
+
 //        restTemplate.postForObject("http://delivery-partner-service/deliveries/assign", request, Object.class);
+        /*
         webClient.post()
                 .uri("http://delivery-partner-service/deliveries/assign")
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(Void.class)
                 .block();
+         */
+
+        kafkaTemplate.send("delivery-assignments", request);
     }
 }

@@ -6,6 +6,7 @@ import com.dhaanesh.delivery.service.Delivery.Partner.Service.Entity.DeliveryPar
 import com.dhaanesh.delivery.service.Delivery.Partner.Service.Entity.LocationRequest;
 import com.dhaanesh.delivery.service.Delivery.Partner.Service.Repository.DeliveryPartnerRepository;
 import com.dhaanesh.delivery.service.Delivery.Partner.Service.Repository.DeliveryRepository;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -61,7 +62,12 @@ public class DeliveryPartnerService {
             log.warn("Delivery not found for pickup id={}", deliveryId);
             return new DeliveryNotFoundException("Delivery Not Found with id=" + deliveryId);
         });
-        delivery.setStatus("PICKED_UP");
+        if(delivery.getPickedUpAt() != null) {
+            log.warn("Delivery id={} has already been picked up at {}", deliveryId, delivery.getPickedUpAt());
+            throw new IllegalStateException("Delivery has already been picked up");
+        }else {
+            delivery.setStatus("PICKED_UP");
+        }
         delivery.setPickedUpAt(LocalDateTime.now().plusMinutes(30));
         Delivery saved = deliveryRepository.save(delivery);
         log.debug("Delivery id={} marked PICKED_UP", saved.getId());
@@ -104,6 +110,7 @@ public class DeliveryPartnerService {
     }
 
     @Transactional
+    @KafkaListener(topics = "delivery-assignments", groupId = "my-group")
     public Delivery assignDelivery(DeliveryAssignRequest request) {
         log.info("Assigning delivery for orderId={}", request.getOrderId());
         DeliveryPartner partner = deliveryPartnerRepository
